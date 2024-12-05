@@ -1,95 +1,205 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
 
-export default function Home() {
+import React, { useState } from "react";
+import styles from "./FolderTreeViewer.module.css";
+
+// Default .gitignore content for Next.js projects
+const nextJsGitignore = `
+.git
+# dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Next.js build output
+.next
+out
+build
+
+# test
+coverage
+`;
+
+function FolderTreeViewer() {
+  const [directoryHandle, setDirectoryHandle] =
+    useState<FileSystemDirectoryHandle | null>(null);
+  const [showFiles, setShowFiles] = useState(false);
+  const [ignoreFolders, setIgnoreFolders] = useState(nextJsGitignore);
+  const [folderTree, setFolderTree] = useState("");
+  const [isTreeVisible, setIsTreeVisible] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeDepth, setActiveDepth] = useState<'All' | number>("All");
+
+  // Function to handle folder selection
+  const handleChooseFolder = async () => {
+    try {
+      const dirHandle = await window.showDirectoryPicker();
+      setDirectoryHandle(dirHandle);
+      setSelectedFolder(dirHandle.name);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Folder selection was canceled.");
+    }
+  };
+
+  // Function to render the folder tree
+  const handleRenderFolderTree = async (showFiles: boolean, depth: number) => {
+    if (!directoryHandle) return;
+
+    setIsLoading(true);
+
+    const ignorePatterns = parseGitignore(ignoreFolders);
+    const tree = await drawFolderTree(
+      directoryHandle,
+      "",
+      0,
+      ignorePatterns,
+      showFiles,
+      depth
+    );
+
+    setFolderTree(tree || "No folders found.");
+    setIsLoading(false);
+  };
+
+  // Function to parse .gitignore content
+  const parseGitignore = (content: string): string[] => {
+    return content
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"));
+  };
+
+  // Function to recursively draw the folder tree
+  const drawFolderTree = async (
+    directoryHandle: FileSystemDirectoryHandle,
+    prefix = "",
+    depth = 0,
+    ignoreFolders: string[] = [],
+    showFiles = false,
+    maxDepth = Infinity
+  ) => {
+    if (depth >= maxDepth) {
+      return `${prefix}├── <span class="ellipsis">...</span>\n`;
+    }
+
+    let tree = "";
+
+    const folders: string[] = [];
+    const files: string[] = [];
+
+    for await (const [name, handle] of directoryHandle.entries()) {
+      if (ignoreFolders.some((pattern) => name.match(pattern))) continue;
+
+      if (handle.kind === "directory") {
+        folders.push(name);
+      } else if (handle.kind === "file" && showFiles) {
+        files.push(name);
+      }
+    }
+
+    folders.sort();
+    files.sort();
+
+    for (const name of [...folders, ...files]) {
+      const isDirectory = folders.includes(name);
+
+      if (isDirectory) {
+        tree += `${prefix}├── <span class="${styles.folderName}">${name}</span>\n`;
+        const subDirHandle = await directoryHandle.getDirectoryHandle(name, {
+          create: false,
+        });
+
+        tree += await drawFolderTree(
+          subDirHandle,
+          `${prefix}│   `,
+          depth + 1,
+          ignoreFolders,
+          showFiles,
+          maxDepth
+        );
+      } else {
+        tree += `${prefix}├── <span class="${styles.fileName}">${name}</span>\n`;
+      }
+    }
+
+    return tree;
+  };
+
+  const handleDepthChange = (depth: number | 'All') => {
+    setActiveDepth(depth);
+    handleRenderFolderTree(showFiles, depth === "All" ? Infinity : depth);
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className={styles.container}>
+      <h1 className={styles.header}>Folder Tree Viewer</h1>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      <button onClick={handleChooseFolder} className={styles.chooseButton}>
+        Choose Folder
+      </button>
+
+      {selectedFolder && (
+        <h3 className={styles.selectedFolder}>Selected Folder: {selectedFolder}</h3>
+      )}
+      <p style={{marginTop: '1em', fontWeight: 'bold'}}>Ignore list</p>
+
+      <textarea
+        value={ignoreFolders}
+        onChange={(e) => setIgnoreFolders(e.target.value)}
+        placeholder="node_modules/\ndist/\n"
+        className={styles.textarea}
+      />
+
+      <button
+        onClick={() => {
+          setIsTreeVisible(true);
+          handleRenderFolderTree(showFiles, Infinity);
+        }}
+        className={styles.showButton}
+      >
+        Show Tree
+      </button>
+
+      {isTreeVisible && (
+        <>
+          <div className={styles.toggles}>
+            <label>
+              <input
+                type="checkbox"
+                checked={showFiles}
+                onChange={(e) => {
+                  setShowFiles(e.target.checked);
+                  handleRenderFolderTree(e.target.checked, activeDepth === "All" ? Infinity : activeDepth);
+                }}
+              />
+              Show Files
+            </label>
+          </div>
+
+          <div className={styles.depthButtons}>
+            {([1, 2, 3, 4, 5, "All"] as Array<number | 'All'>).map((depth) => (
+              <button
+                key={depth}
+                onClick={() => handleDepthChange(depth === "All" ? Infinity : depth)}
+                className={`${styles.depthButton} ${activeDepth === depth ? styles.active : ""}`}
+              >
+                {depth}
+              </button>
+            ))}
+          </div>
+
+          {isLoading && <p className={styles.loading}>Loading folder tree...</p>}
+
+          <div
+            className={styles.treeContainer}
+            dangerouslySetInnerHTML={{ __html: folderTree || "No tree to show." }}
           />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </>
+      )}
     </div>
   );
 }
+
+export default FolderTreeViewer;

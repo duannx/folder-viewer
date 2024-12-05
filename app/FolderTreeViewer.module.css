@@ -1,0 +1,96 @@
+.container {
+    padding: 20px;
+  }
+  
+  .header {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  
+  .selectedFolder {
+    margin-top: 20px;
+    font-weight: bold;
+  }
+  
+  .textarea {
+    width: 100%;
+    height: 120px;
+    font-family: monospace;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 4px;
+  }
+  
+  .chooseButton,
+  .showButton {
+    margin-top: 20px;
+    padding: 10px 15px;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .chooseButton:hover,
+  .showButton:hover {
+    background-color: #0056b3;
+  }
+  
+  .toggles {
+    margin-top: 20px;
+  }
+  
+  .depthButtons {
+    margin-top: 10px;
+  }
+  
+  .depthButton {
+    margin-right: 8px;
+    padding: 5px 10px;
+    border: 1px solid #007bff;
+    background-color: #007bff;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .depthButton:hover {
+    background-color: #0056b3;
+  }
+  
+  .active {
+    background-color: #0056b3;
+    color: white;
+  }
+  
+  .loading {
+    margin-top: 20px;
+    color: #007bff;
+  }
+  
+  .treeContainer {
+    white-space: pre;
+    font-family: monospace;
+    background: #f8f8f8;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 20px;
+  }
+  
+  .folderName {
+    font-weight: bold;
+    color: black;
+  }
+  
+  .fileName {
+    color: black;
+  }
+  
+  .ellipsis {
+    color: gray;
+  }
+  
